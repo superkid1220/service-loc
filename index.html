@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>最近保養廠查詢</title>
+</head>
+<body>
+<h2>最近保養廠</h2>
+<div id="result">載入中...</div>
+
+<script>
+const url = "https://sheetdb.io/api/v1/y7b56e2q4vutg";
+
+// 使用者位置（你可以改）
+const userLat = 25.0330;
+const userLon = 121.5654;
+
+fetch(url)
+  .then(res => res.json())
+  .then(data => {
+    let nearest = null;
+    let minDist = Infinity;
+
+    data.forEach(row => {
+      const lat = parseFloat(row.UNIT_LAT);
+      const lon = parseFloat(row.UNIT_LON);
+      const dist = Math.sqrt(
+        Math.pow(userLat - lat, 2) +
+        Math.pow(userLon - lon, 2)
+      );
+      
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = row;
+      }
+    });
+
+    document.getElementById("result").innerHTML =
+      `保養廠：${nearest.UNIT_NM}<br>
+       緯度：${nearest.UNIT_LAT}<br>
+       經度：${nearest.UNIT_LON}`;
+  });
+</script>
+
+</body>
+</html>
