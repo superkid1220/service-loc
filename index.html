@@ -1,46 +1,39 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8">
-  <title>最近保養廠查詢</title>
-</head>
-<body>
-<h2>最近保養廠</h2>
-<div id="result">載入中...</div>
+from fastapi import FastAPI, Query
+import requests
+import math
 
-<script>
-const url = "https://sheetdb.io/api/v1/y7b56e2q4vutg";
+app = FastAPI()
 
-// 使用者位置（你可以改）
-const userLat = 25.0330;
-const userLon = 121.5654;
+SHEETDB_URL = "https://sheetdb.io/api/v1/y7b56e2q4vutg"
 
-fetch(url)
-  .then(res => res.json())
-  .then(data => {
-    let nearest = null;
-    let minDist = Infinity;
+def calc_dist(lat1, lon1, lat2, lon2):
+    return math.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2)
 
-    data.forEach(row => {
-      const lat = parseFloat(row.UNIT_LAT);
-      const lon = parseFloat(row.UNIT_LON);
-      const dist = Math.sqrt(
-        Math.pow(userLat - lat, 2) +
-        Math.pow(userLon - lon, 2)
-      );
-      
-      if (dist < minDist) {
-        minDist = dist;
-        nearest = row;
-      }
-    });
+@app.get("/nearest")
+def nearest(lat: float = Query(...), lon: float = Query(...)):
+    # 抓 SheetDB 資料
+    data = requests.get(SHEETDB_URL).json()
 
-    document.getElementById("result").innerHTML =
-      `保養廠：${nearest.UNIT_NM}<br>
-       緯度：${nearest.UNIT_LAT}<br>
-       經度：${nearest.UNIT_LON}`;
-  });
-</script>
+    nearest_row = None
+    min_dist = 999999999
 
-</body>
-</html>
+    for row in data:
+        try:
+            slat = float(row["UNIT_LAT"])
+            slon = float(row["UNIT_LON"])
+        except:
+            continue
+
+        dist = calc_dist(lat, lon, slat, slon)
+
+        if dist < min_dist:
+            min_dist = dist
+            nearest_row = row
+
+    if nearest_row:
+        return {
+            "UNIT_NM": nearest_row["UNIT_NM"],
+            "UNIT_ADDR": nearest_row["UNIT_ADDR"]
+        }
+    else:
+        return {"error": "no data"}
